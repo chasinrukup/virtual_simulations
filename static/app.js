@@ -72,6 +72,7 @@ function closeModal() {
 
 async function confirmDeploy() {
   if (selectedScenario === null) return;
+  const scenarioId = selectedScenario;   // save before closeModal() clears it
   closeModal();
   logOffset = 0;
   document.getElementById("logOutput").innerHTML = "";
@@ -79,7 +80,7 @@ async function confirmDeploy() {
   const res = await fetch("/api/deploy", {
     method:  "POST",
     headers: {"Content-Type": "application/json"},
-    body:    JSON.stringify({scenario_id: selectedScenario}),
+    body:    JSON.stringify({scenario_id: scenarioId}),
   });
   const data = await res.json();
   if (!res.ok) {
