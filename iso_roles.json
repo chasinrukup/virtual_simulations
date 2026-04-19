@@ -1,0 +1,21 @@
+{
+  "cve-2012-1823.iso": "endpoint",
+  "debian-13.3.0-amd64-netinst.iso": "endpoint",
+  "netgate-installer-v1.1.1-RELEASE-amd64.iso": "firewall",
+  "ubuntu-24.04.4-desktop-amd64.iso": "endpoint",
+  "ubuntu-24.04.4-live-server-amd64.iso": "endpoint",
+  "emyers_unbuntu_vsftpd.ova": "endpoint",
+  "kali-linux-2025.4-virtualbox-amd64": "endpoint",
+  "emyers-cve-2012-1823-php.ova": "endpoint",
+  "pfSense.ova": "firewall",
+  "emyers-vulnhu-php.ova": "endpoint",
+  "pfSense_export.ova": "firewall",
+  "emyers-2008-1930.ova": "endpoint",
+  "emyer-cve-2012-6081.ova": "endpoint",
+  "emyers-mint-shell.ova": "endpoint",
+  "lab-host-012-webmin.ova": "endpoint",
+  "emyers-sudo-CVE-2021-3156.ova": "endpoint",
+  "lab-host-011-activemq.ova": "endpoint",
+  "emyers-CVE-2025-3248.ova": "endpoint",
+  "emyers_debian_apache.ova": "endpoint"
+}

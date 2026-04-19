@@ -1,0 +1,31 @@
+# Large VM images - stay local only
+*.ova
+*.iso
+*.vdi
+*.vmdk
+
+# VirtualBox VM folders
+kali-linux-2025.4-virtualbox-amd64/
+CVE-2011-2523*/
+PHP/
+OneDrive_*/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+lab_orchestrator.log
+
+# Saved configs (machine-specific)
+configs/
+
+# Test scratch files
+test1
+test2
+testing3
+
+# Claude internal
+.claude/

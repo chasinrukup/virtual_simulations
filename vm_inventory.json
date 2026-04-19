@@ -1,0 +1,50 @@
+{
+  "iso_directory": "C:\\Users\\admin\\virtual_simulations",
+
+  "available_isos": {
+    "Endpoint_ISOs": [
+      {
+        "filename": "debian-13.3.0-amd64-netinst.iso",
+        "ostype": "Debian_64",
+        "description": "Debian 13 netinstall"
+      },
+      {
+        "filename": "ubuntu-24.04.4-desktop-amd64.iso",
+        "ostype": "Ubuntu_64",
+        "description": "Ubuntu 24.04 Desktop"
+      },
+      {
+        "filename": "ubuntu-24.04.4-live-server-amd64.iso",
+        "ostype": "Ubuntu_64",
+        "description": "Ubuntu 24.04 Server"
+      },
+      {
+        "filename": "cve-2012-1823.iso",
+        "ostype": "Debian_64",
+        "description": "CVE-2012-1823 vulnerable target"
+      }
+    ],
+
+    "Firewall_ISOs": [
+      {
+        "filename": "netgate-installer-v1.1.1-RELEASE-amd64.iso",
+        "ostype": "FreeBSD_64",
+        "description": "pfSense / Netgate firewall"
+      }
+    ],
+
+    "Pentest_ISOs": [
+      {
+        "filename": "kali-linux-2025.4-virtualbox-amd64",
+        "ostype": "Debian_64",
+        "description": "Kali Linux (VirtualBox appliance folder)"
+      }
+    ]
+  },
+
+  "default_configs": {
+    "endpoint": {"ram_mb": 2048, "cpus": 2, "disk_mb": 20000},
+    "firewall": {"ram_mb": 1024, "cpus": 1, "disk_mb": 10000},
+    "server":   {"ram_mb": 4096, "cpus": 2, "disk_mb": 40000}
+  }
+}
