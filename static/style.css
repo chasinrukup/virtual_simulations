@@ -1,0 +1,255 @@
+/* ── Reset & base ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0f1117;
+  --surface:   #1a1d27;
+  --surface2:  #22263a;
+  --border:    #2e3348;
+  --text:      #e2e8f0;
+  --muted:     #8892a4;
+  --accent:    #4f8ef7;
+  --green:     #34d399;
+  --yellow:    #fbbf24;
+  --red:       #f87171;
+  --wan:       #f97316;
+  --lan:       #4f8ef7;
+  --dmz:       #34d399;
+  --mgmt:      #a78bfa;
+  --font-mono: "Cascadia Code", "Fira Code", "Consolas", monospace;
+}
+
+html, body { height: 100%; font-family: system-ui, sans-serif; font-size: 14px;
+  background: var(--bg); color: var(--text); overflow: hidden; }
+
+/* ── Header ────────────────────────────────────────────────────────────── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 52px; padding: 0 20px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.header-title { font-size: 16px; font-weight: 600; letter-spacing: .3px; }
+.header-icon  { color: var(--accent); margin-right: 8px; }
+.header-status { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.status-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--muted); transition: background .4s;
+}
+.status-dot.idle     { background: var(--muted); }
+.status-dot.deploying{ background: var(--yellow); animation: pulse 1.2s infinite; }
+.status-dot.running  { background: var(--green); }
+.status-dot.stopping { background: var(--red); animation: pulse 1.2s infinite; }
+.status-dot.stopped  { background: var(--yellow); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; } 50% { opacity: .3; }
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+.layout {
+  display: flex; height: calc(100vh - 52px); overflow: hidden;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+.sidebar {
+  width: 300px; flex-shrink: 0;
+  background: var(--surface); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sidebar-heading {
+  padding: 14px 16px 10px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.scenario-list { overflow-y: auto; flex: 1; padding: 8px; }
+
+.scenario-card {
+  border: 1px solid var(--border); border-radius: 8px;
+  margin-bottom: 8px; overflow: hidden; transition: border-color .2s;
+}
+.scenario-card:hover { border-color: var(--accent); }
+.scenario-card.unavailable { opacity: .5; }
+
+.scenario-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; cursor: pointer; background: var(--surface2);
+}
+.scenario-name { font-weight: 600; font-size: 13px; }
+.scenario-badge {
+  font-size: 11px; padding: 2px 7px; border-radius: 10px;
+  background: var(--surface); color: var(--muted);
+}
+.scenario-badge.ok { background: rgba(52,211,153,.15); color: var(--green); }
+.scenario-badge.na { background: rgba(248,113,113,.15); color: var(--red); }
+
+.scenario-body { padding: 10px 12px; display: none; }
+.scenario-card.open .scenario-body { display: block; }
+
+.scenario-desc {
+  font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 10px;
+  white-space: pre-wrap;
+}
+.scenario-layout {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  background: rgba(79,142,247,.06); border: 1px solid rgba(79,142,247,.15);
+  border-radius: 5px; padding: 8px 10px; margin-bottom: 10px;
+  white-space: pre; overflow-x: auto;
+}
+.scenario-meta {
+  display: flex; gap: 12px; font-size: 11px; color: var(--muted); margin-bottom: 10px;
+}
+.scenario-meta span { display: flex; align-items: center; gap: 4px; }
+
+.scenario-missing {
+  font-size: 11px; color: var(--red); margin-bottom: 8px;
+  background: rgba(248,113,113,.08); border-radius: 4px; padding: 6px 8px;
+}
+
+/* ── Main content ────────────────────────────────────────────────────────── */
+.content {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden; gap: 0;
+}
+
+/* ── Panels ──────────────────────────────────────────────────────────────── */
+.panel {
+  display: flex; flex-direction: column;
+  border-bottom: 1px solid var(--border);
+}
+.panel:last-child { border-bottom: none; flex: 1; }
+
+.panel-heading {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.panel-actions { display: flex; gap: 8px; }
+
+/* ── Topology ────────────────────────────────────────────────────────────── */
+#topologyPanel { flex: 0 0 auto; }
+#topologyView {
+  padding: 16px 20px; min-height: 80px; overflow-x: auto;
+}
+.topology-empty { color: var(--muted); font-size: 13px; padding: 20px; }
+
+.topology-diagram { display: flex; align-items: flex-start; gap: 0; flex-wrap: nowrap; }
+
+.topo-subnet {
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 130px;
+}
+.topo-subnet-box {
+  width: 120px; border: 2px solid; border-radius: 8px; padding: 8px;
+  text-align: center; position: relative;
+}
+.topo-subnet-name { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+.topo-subnet-net  { font-size: 10px; opacity: .7; font-family: var(--font-mono); }
+.topo-vms { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; width: 120px; }
+.topo-vm {
+  font-size: 11px; border-radius: 5px; padding: 4px 8px;
+  background: var(--surface2); border: 1px solid var(--border);
+  display: flex; align-items: center; gap: 5px;
+}
+.topo-vm-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+.topo-connector {
+  display: flex; align-items: center; padding: 0 4px; padding-bottom: 40px;
+}
+.topo-fw-box {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.topo-fw-label {
+  font-size: 10px; font-weight: 700; color: var(--accent);
+  background: rgba(79,142,247,.12); border: 1px solid rgba(79,142,247,.3);
+  border-radius: 5px; padding: 3px 8px;
+}
+.topo-line { width: 30px; height: 2px; background: var(--border); }
+.topo-arrow { color: var(--muted); font-size: 14px; }
+
+/* Subnet colors */
+.subnet-wan  { border-color: var(--wan);  color: var(--wan); }
+.subnet-lan  { border-color: var(--lan);  color: var(--lan); }
+.subnet-dmz  { border-color: var(--dmz);  color: var(--dmz); }
+.subnet-mgmt { border-color: var(--mgmt); color: var(--mgmt); }
+.subnet-other{ border-color: var(--border); color: var(--text); }
+
+/* ── VM status table ─────────────────────────────────────────────────────── */
+#statusPanel { flex: 0 0 auto; }
+#vmStatus { padding: 12px 16px; }
+.vm-status-empty { padding: 16px; color: var(--muted); font-size: 13px; }
+
+.vm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.vm-table th {
+  text-align: left; padding: 6px 10px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.vm-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+.vm-table tr:last-child td { border-bottom: none; }
+
+.state-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+}
+.state-running { background: rgba(52,211,153,.15); color: var(--green); }
+.state-poweroff { background: rgba(136,146,164,.1); color: var(--muted); }
+.state-other    { background: rgba(251,191,36,.1);  color: var(--yellow); }
+
+.role-badge {
+  font-size: 10px; padding: 2px 6px; border-radius: 4px;
+  background: var(--surface2); color: var(--muted);
+  border: 1px solid var(--border);
+}
+.role-firewall { color: var(--accent); border-color: rgba(79,142,247,.3); }
+
+/* ── Log output ──────────────────────────────────────────────────────────── */
+#logPanel { flex: 1; min-height: 0; }
+#logOutput {
+  flex: 1; overflow-y: auto; padding: 10px 14px;
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
+  color: var(--muted); height: 100%;
+}
+.log-ok    { color: var(--green); }
+.log-err   { color: var(--red); }
+.log-info  { color: var(--text); }
+.log-head  { color: var(--accent); font-weight: 700; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn {
+  padding: 5px 14px; border: none; border-radius: 6px; cursor: pointer;
+  font-size: 12px; font-weight: 600; transition: opacity .15s;
+}
+.btn:disabled { opacity: .35; cursor: not-allowed; }
+.btn:not(:disabled):hover { opacity: .85; }
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-warn    { background: rgba(251,191,36,.15); color: var(--yellow);
+               border: 1px solid rgba(251,191,36,.3); }
+.btn-danger  { background: rgba(248,113,113,.15); color: var(--red);
+               border: 1px solid rgba(248,113,113,.3); }
+.btn-ghost   { background: var(--surface2); color: var(--muted);
+               border: 1px solid var(--border); }
+
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; width: 480px; padding: 24px;
+}
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.modal-body  { color: var(--muted); font-size: 13px; line-height: 1.7;
+               margin-bottom: 20px; white-space: pre-wrap; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+/* ── Loading ─────────────────────────────────────────────────────────────── */
+.loading { color: var(--muted); font-size: 13px; padding: 16px; }
+
+/* ── Scrollbars ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
