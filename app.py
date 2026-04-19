@@ -63,6 +63,12 @@ _state_lock = threading.Lock()
 
 app = Flask(__name__)
 
+# ── Health check ─────────────────────────────────────────────────────────────
+
+@app.route("/api/ping")
+def api_ping():
+    return jsonify({"ok": True, "scenarios": len(prebuilt.SCENARIOS)})
+
 # ── Page ─────────────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -93,8 +99,14 @@ def api_scenarios():
 
 @app.route("/api/deploy", methods=["POST"])
 def api_deploy():
-    data = request.json or {}
+    data = request.get_json(force=True, silent=True) or {}
     scenario_id = data.get("scenario_id")
+    # Coerce string to int in case the browser sends "0" instead of 0
+    if scenario_id is not None:
+        try:
+            scenario_id = int(scenario_id)
+        except (ValueError, TypeError):
+            scenario_id = None
 
     with _state_lock:
         if _state["status"] == "deploying":
