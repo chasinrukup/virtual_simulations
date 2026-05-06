@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Virtual Network Simulation Lab</title>
   <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
 </head>
 <body>
 
@@ -29,6 +30,11 @@
       <div id="scenarioList" class="scenario-list">
         <div class="loading">Loading scenarios...</div>
       </div>
+      <div class="sidebar-footer">
+        <button class="btn btn-ghost" style="width:100%" onclick="openCustomWizard()">
+          &#9965; Build Custom Lab
+        </button>
+      </div>
     </aside>
 
     <!-- Right: main content -->
@@ -47,6 +53,7 @@
         <div class="panel-heading">
           VM Status
           <div class="panel-actions">
+            <button class="btn btn-ghost" id="btnPingTest" onclick="runPingTest()" disabled title="SSH into each VM and ping all others">&#9670; Ping All VMs</button>
             <button class="btn btn-warn" id="btnStop" onclick="stopAll()" disabled>Stop All</button>
             <button class="btn btn-danger" id="btnDelete" onclick="teardown()" disabled>Delete Lab</button>
           </div>
@@ -58,7 +65,10 @@
       <section class="panel" id="logPanel">
         <div class="panel-heading">
           Deployment Log
-          <button class="btn btn-ghost" onclick="clearLog()">Clear</button>
+          <div class="panel-actions">
+            <button class="btn btn-ghost" id="btnCopyLog" onclick="copyLog()" title="Copy log to clipboard">&#128203; Copy</button>
+            <button class="btn btn-ghost" onclick="clearLog()">Clear</button>
+          </div>
         </div>
         <div id="logOutput" class="log-output"></div>
       </section>
@@ -78,6 +88,199 @@
     </div>
   </div>
 
+  <!-- ── Custom Lab Wizard ──────────────────────────────────────────────── -->
+  <div class="modal-overlay" id="customModal" style="display:none">
+    <div class="modal modal-wide">
+
+      <!-- Step progress bar -->
+      <div class="wizard-bar">
+        <div class="wizard-bar-step" id="wbar1">1. Subnets</div>
+        <div class="wizard-bar-sep">›</div>
+        <div class="wizard-bar-step" id="wbar2">2. Machines</div>
+        <div class="wizard-bar-sep">›</div>
+        <div class="wizard-bar-step" id="wbar3">3. Deploy</div>
+      </div>
+
+      <!-- Step 1: Subnets -->
+      <div id="wStep1">
+        <div class="modal-title">Step 1 — Define Subnets</div>
+        <div class="wizard-hint">
+          A <b>subnet</b> is an isolated network segment. Machines in the <b>same</b> subnet talk
+          freely. Machines in <b>different</b> subnets are isolated — they need a firewall to communicate.
+          <br><br>Tip: Start with 2 subnets (e.g. WAN + LAN). You can add up to 5.
+        </div>
+        <div class="wizard-presets">
+          <span class="wizard-preset-label">Quick add:</span>
+          <button class="btn btn-ghost" onclick="wAddSubnet('WAN')">+ WAN</button>
+          <button class="btn btn-ghost" onclick="wAddSubnet('LAN')">+ LAN</button>
+          <button class="btn btn-ghost" onclick="wAddSubnet('DMZ')">+ DMZ</button>
+          <button class="btn btn-ghost" onclick="wAddSubnet('MGMT')">+ MGMT</button>
+          <button class="btn btn-ghost" onclick="wAddSubnet('DEV')">+ DEV</button>
+        </div>
+        <div id="wSubnetList" class="wizard-list"></div>
+      </div>
+
+      <!-- Step 2: VMs -->
+      <div id="wStep2" style="display:none">
+        <div class="modal-title">Step 2 — Add Virtual Machines</div>
+        <div class="wizard-hint">
+          Place VMs on your subnets. Use <b>endpoint</b> for regular machines (servers, attackers).
+          Use <b>firewall</b> to connect subnets — it bridges a WAN side to one or more LAN sides.
+        </div>
+        <div id="wVmList" class="wizard-list"></div>
+        <button class="btn btn-ghost" id="wBtnAddVm" style="width:100%;margin-top:8px" onclick="wShowAddVmForm()">+ Add VM</button>
+        <!-- Inline add-VM form -->
+        <div id="wAddVmForm" class="wizard-add-form" style="display:none">
+          <div class="wform-row">
+            <label>Name</label>
+            <input type="text" id="wVmName" placeholder="e.g. Attacker" />
+          </div>
+          <div class="wform-row">
+            <label>Role</label>
+            <select id="wVmRole" onchange="wUpdateVmForm()">
+              <option value="endpoint">Endpoint — regular machine</option>
+              <option value="firewall">Firewall — connects subnets</option>
+            </select>
+          </div>
+          <div class="wform-row">
+            <label>Image</label>
+            <select id="wVmImage"></select>
+          </div>
+          <!-- Endpoint: single subnet -->
+          <div id="wEndpointSubnetRow" class="wform-row">
+            <label>Subnet</label>
+            <select id="wEndpointSubnet"></select>
+          </div>
+          <!-- Firewall: WAN + LAN -->
+          <div id="wFirewallRows" style="display:none">
+            <div class="wform-row">
+              <label>WAN Subnet <small>(external / untrusted)</small></label>
+              <select id="wFwWan"></select>
+            </div>
+            <div class="wform-row">
+              <label>LAN Subnets <small>(internal / protected)</small></label>
+              <div id="wFwLanChecks" class="wform-checks"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-ghost" style="flex:1" onclick="wHideAddVmForm()">Cancel</button>
+            <button class="btn btn-primary" style="flex:2" onclick="wAddVm()">Add VM</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Review & Deploy -->
+      <div id="wStep3" style="display:none">
+        <div class="modal-title">Step 3 — Review &amp; Deploy</div>
+        <div class="wform-row" style="margin-bottom:12px">
+          <label>Lab name</label>
+          <input type="text" id="wLabName" placeholder="My Custom Lab" />
+        </div>
+        <div id="wReviewContent"></div>
+      </div>
+
+      <!-- Wizard footer buttons -->
+      <div class="wizard-footer">
+        <button class="btn btn-ghost" onclick="closeCustomWizard()">Cancel</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" id="wBtnBack" onclick="wBack()" style="display:none">← Back</button>
+          <button class="btn btn-primary" id="wBtnNext" onclick="wNext()">Next →</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SSH connection dialog ─────────────────────────────────────────── -->
+  <div class="modal-overlay" id="sshDialog" style="display:none">
+    <div class="modal" style="width:420px">
+      <div class="modal-title" id="sshDialogTitle">SSH Connection</div>
+      <div class="modal-body" style="margin-bottom:16px">
+        <div class="wform-row">
+          <label>IP Address</label>
+          <div style="flex:1">
+            <input type="text" id="sshIp" placeholder="192.168.30.101" style="width:100%" />
+            <div id="sshIpHint" class="ssh-dialog-hint"></div>
+          </div>
+        </div>
+        <div class="wform-row">
+          <label>Username</label>
+          <input type="text" id="sshUser" value="john" />
+        </div>
+        <div class="wform-row">
+          <label>Password</label>
+          <input type="password" id="sshPass" value="admin" />
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeSshDialog()">Cancel</button>
+        <button class="btn btn-primary" id="sshConnectBtn" onclick="connectSsh()">Open Terminal →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SSH terminal window ───────────────────────────────────────────── -->
+  <div class="ssh-term-overlay" id="sshTermModal" style="display:none">
+    <div class="ssh-term-window">
+      <div class="ssh-term-header">
+        <span id="sshTermTitle" class="ssh-term-title"></span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="sshTermStatus" class="ssh-term-status"></span>
+          <button class="btn btn-danger" style="padding:3px 10px" onclick="closeSshTerminal()">✕ Close</button>
+        </div>
+      </div>
+      <div id="termDiv" class="ssh-term-body"></div>
+    </div>
+  </div>
+
+  <!-- ── Kali Desktop (noVNC) window ─────────────────────────────────────── -->
+  <div class="ssh-term-overlay" id="desktopModal" style="display:none">
+    <div class="desktop-window">
+      <div class="ssh-term-header">
+        <span id="desktopTitle" class="ssh-term-title"></span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="desktopStatus" class="ssh-term-status"></span>
+          <button class="btn btn-danger" style="padding:3px 10px" onclick="closeDesktop()">✕ Close</button>
+        </div>
+      </div>
+      <div id="desktopCanvas" class="desktop-canvas"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
   <script src="/static/app.js"></script>
+
+  <!-- noVNC — loaded as ES module so rfb.js internal imports resolve correctly -->
+  <script type="module">
+    import RFB from 'https://cdn.jsdelivr.net/npm/@novnc/novnc@1.4.0/core/rfb.js';
+    let _rfb = null;
+
+    window._startNoVNC = function(wsPort, containerId) {
+      const container = document.getElementById(containerId);
+      if (_rfb) { try { _rfb.disconnect(); } catch (_) {} _rfb = null; }
+      try {
+        _rfb = new RFB(container, `ws://localhost:${wsPort}`);
+        _rfb.scaleViewport = true;
+        _rfb.addEventListener('connect', () => {
+          document.getElementById("desktopStatus").textContent = "Connected";
+          document.getElementById("desktopStatus").style.color = "#34d399";
+        });
+        _rfb.addEventListener('disconnect', (e) => {
+          document.getElementById("desktopStatus").textContent =
+            e.detail.clean ? "Disconnected" : "Connection lost";
+          document.getElementById("desktopStatus").style.color = "#8892a4";
+        });
+        _rfb.addEventListener('credentialsrequired', () => _rfb.sendCredentials({password: 'kali'}));
+      } catch (e) {
+        document.getElementById("desktopStatus").textContent = "noVNC error: " + e;
+        document.getElementById("desktopStatus").style.color = "#f87171";
+      }
+    };
+
+    window._stopNoVNC = function() {
+      if (_rfb) { try { _rfb.disconnect(); } catch (_) {} _rfb = null; }
+    };
+  </script>
 </body>
 </html>

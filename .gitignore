@@ -29,3 +29,6 @@ testing3
 
 # Claude internal
 .claude/
+
+# Playwright MCP cache
+.playwright-mcp/

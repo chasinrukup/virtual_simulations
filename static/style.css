@@ -75,7 +75,7 @@ header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 12px; cursor: pointer; background: var(--surface2);
 }
-.scenario-name { font-weight: 600; font-size: 13px; }
+.scenario-name { font-weight: 600; font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scenario-badge {
   font-size: 11px; padding: 2px 7px; border-radius: 10px;
   background: var(--surface); color: var(--muted);
@@ -136,58 +136,77 @@ header {
 
 .topology-diagram { display: flex; align-items: flex-start; gap: 0; flex-wrap: nowrap; }
 
-.topo-subnet {
-  display: flex; flex-direction: column; align-items: center;
-  min-width: 130px;
+/* VM group (one per subnet) */
+.topo-vm-group {
+  display: flex; flex-direction: column; align-items: stretch;
+  gap: 6px; min-width: 150px;
 }
-.topo-subnet-box {
-  width: 120px; border: 2px solid; border-radius: 8px; padding: 8px;
-  text-align: center; position: relative;
-}
-.topo-subnet-name { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
-.topo-subnet-net  { font-size: 10px; opacity: .7; font-family: var(--font-mono); }
-.topo-vms { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; width: 120px; }
-.topo-vm {
-  font-size: 11px; border-radius: 5px; padding: 4px 8px;
-  background: var(--surface2); border: 1px solid var(--border);
-  display: flex; align-items: center; gap: 5px;
-}
-.topo-vm-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
+/* Subnet label pill at top of each group */
+.topo-subnet-tag {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  padding: 2px 10px; border-radius: 10px; margin-bottom: 4px; text-align: center;
+  border: 1px solid currentColor; opacity: 0.8; align-self: center;
+}
+.subnet-wan  .topo-subnet-tag, .topo-subnet-tag.subnet-wan  { color: var(--wan);  border-color: var(--wan); }
+.subnet-lan  .topo-subnet-tag, .topo-subnet-tag.subnet-lan  { color: var(--lan);  border-color: var(--lan); }
+.subnet-dmz  .topo-subnet-tag, .topo-subnet-tag.subnet-dmz  { color: var(--dmz);  border-color: var(--dmz); }
+.subnet-mgmt .topo-subnet-tag, .topo-subnet-tag.subnet-mgmt { color: var(--mgmt); border-color: var(--mgmt); }
+.topo-subnet-tag.subnet-other { color: var(--text); border-color: var(--border); }
+
+/* VM card — the primary topology node */
+.topo-vm-card {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 6px 10px; font-size: 12px;
+  transition: background .15s, border-color .15s;
+}
+.topo-vm-card.topo-vm-clickable { cursor: pointer; }
+.topo-vm-card.topo-vm-clickable:hover {
+  background: rgba(79,142,247,.15); border-color: var(--accent);
+}
+.topo-vm-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; }
+.topo-vm-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.topo-empty-slot { font-size: 11px; color: var(--border); font-style: italic; padding: 4px 8px; text-align: center; }
+
+/* Firewall connector between groups */
 .topo-connector {
   display: flex; align-items: center; padding: 0 4px; padding-bottom: 40px;
 }
 .topo-fw-box {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
+.topo-fw-box.topo-fw-clickable { cursor: pointer; }
+.topo-fw-box.topo-fw-clickable:hover .topo-fw-label { border-color: var(--accent); color: var(--accent); }
 .topo-fw-label {
   font-size: 10px; font-weight: 700; color: var(--accent);
   background: rgba(79,142,247,.12); border: 1px solid rgba(79,142,247,.3);
-  border-radius: 5px; padding: 3px 8px;
+  border-radius: 5px; padding: 3px 8px; white-space: nowrap;
 }
-.topo-line { width: 30px; height: 2px; background: var(--border); }
-.topo-arrow { color: var(--muted); font-size: 14px; }
+.topo-fw-sub  { font-size: 9px; color: var(--muted); text-align: center; }
+.topo-line    { width: 30px; height: 2px; background: var(--border); }
 
-/* Subnet colors */
-.subnet-wan  { border-color: var(--wan);  color: var(--wan); }
-.subnet-lan  { border-color: var(--lan);  color: var(--lan); }
-.subnet-dmz  { border-color: var(--dmz);  color: var(--dmz); }
-.subnet-mgmt { border-color: var(--mgmt); color: var(--mgmt); }
-.subnet-other{ border-color: var(--border); color: var(--text); }
+/* SSH badge on running VMs */
+.topo-vm-ssh {
+  font-size: 9px; font-weight: 700; color: var(--accent);
+  background: rgba(79,142,247,.15); border-radius: 3px;
+  padding: 1px 4px; flex-shrink: 0;
+}
 
 /* ── VM status table ─────────────────────────────────────────────────────── */
 #statusPanel { flex: 0 0 auto; }
-#vmStatus { padding: 12px 16px; }
+#vmStatus { padding: 12px 16px; overflow-x: auto; }
 .vm-status-empty { padding: 16px; color: var(--muted); font-size: 13px; }
 
-.vm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.vm-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 580px; }
 .vm-table th {
   text-align: left; padding: 6px 10px; font-size: 11px; font-weight: 700;
   text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border); white-space: nowrap;
 }
-.vm-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+.vm-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .vm-table tr:last-child td { border-bottom: none; }
+.vm-table td:last-child { min-width: 200px; max-width: 260px; }
 
 .state-badge {
   display: inline-flex; align-items: center; gap: 5px;
@@ -203,6 +222,25 @@ header {
   border: 1px solid var(--border);
 }
 .role-firewall { color: var(--accent); border-color: rgba(79,142,247,.3); }
+
+/* ── SSH info ────────────────────────────────────────────────────────────── */
+.ssh-info  { font-size: 11px; line-height: 1.6; word-break: break-word; overflow-wrap: anywhere; }
+.ssh-cmd   { color: var(--text); font-family: var(--font-mono); }
+.ssh-range { color: var(--accent); font-style: italic; }
+.ssh-pass  { color: var(--muted); font-family: var(--font-mono); }
+.ssh-pass code { color: var(--green); background: rgba(52,211,153,.08);
+                 border-radius: 3px; padding: 0 4px; }
+.ssh-note  { color: var(--yellow); font-size: 10px; margin-top: 2px; }
+.ssh-na    { color: var(--border); }
+.ssh-term-btn { display: block; margin-top: 6px; font-size: 11px; padding: 3px 10px; }
+
+/* ── Kali desktop (noVNC) window ─────────────────────────────────────────── */
+.desktop-window {
+  width: min(1150px, 96vw); height: min(740px, 92vh);
+  background: #000; border: 1px solid var(--border); border-radius: 10px;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.desktop-canvas { flex: 1; min-height: 0; }
 
 /* ── Log output ──────────────────────────────────────────────────────────── */
 #logPanel { flex: 1; min-height: 0; }
@@ -232,6 +270,51 @@ header {
 .btn-ghost   { background: var(--surface2); color: var(--muted);
                border: 1px solid var(--border); }
 
+/* ── SSH terminal overlay ────────────────────────────────────────────────── */
+.ssh-term-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  display: flex; align-items: center; justify-content: center; z-index: 200;
+}
+.ssh-term-window {
+  width: 900px; height: 560px; max-width: 96vw; max-height: 90vh;
+  background: #0f1117; border: 1px solid var(--border); border-radius: 10px;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.ssh-term-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.ssh-term-title  { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
+.ssh-term-status { font-size: 11px; color: var(--yellow); }
+.ssh-term-body   { flex: 1; min-height: 0; padding: 6px; }
+/* xterm.js fills its parent */
+.ssh-term-body .xterm { height: 100%; }
+.ssh-term-body .xterm-viewport { border-radius: 0; }
+
+/* SSH dialog hint text */
+.ssh-dialog-hint {
+  font-size: 11px; color: var(--muted); margin-top: 4px; white-space: pre-wrap; line-height: 1.5;
+}
+
+/* Clickable VM nodes in topology */
+.topo-vm-clickable {
+  cursor: pointer; transition: background .15s, border-color .15s;
+}
+.topo-vm-clickable:hover {
+  background: rgba(79,142,247,.15); border-color: var(--accent);
+}
+.topo-vm-ssh {
+  font-size: 9px; font-weight: 700; color: var(--accent);
+  background: rgba(79,142,247,.15); border-radius: 3px;
+  padding: 1px 4px; margin-left: auto; flex-shrink: 0;
+}
+
+/* ── Sidebar footer ──────────────────────────────────────────────────────── */
+.sidebar-footer {
+  padding: 10px 8px; border-top: 1px solid var(--border); flex-shrink: 0;
+}
+
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.6);
@@ -245,6 +328,101 @@ header {
 .modal-body  { color: var(--muted); font-size: 13px; line-height: 1.7;
                margin-bottom: 20px; white-space: pre-wrap; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+/* ── Wizard ──────────────────────────────────────────────────────────────── */
+.modal-wide { width: 620px; max-height: 88vh; display: flex; flex-direction: column; padding: 20px; }
+
+.wizard-bar {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.wizard-bar-step {
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  padding: 4px 10px; border-radius: 5px;
+}
+.wizard-bar-step.active { background: rgba(79,142,247,.15); color: var(--accent); }
+.wizard-bar-step.done   { color: var(--green); }
+.wizard-bar-sep { color: var(--border); font-size: 16px; }
+
+.wizard-hint {
+  font-size: 12px; color: var(--muted); line-height: 1.7;
+  background: rgba(79,142,247,.05); border: 1px solid rgba(79,142,247,.12);
+  border-radius: 6px; padding: 10px 12px; margin-bottom: 12px;
+}
+.wizard-hint b { color: var(--text); }
+
+.wizard-presets {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.wizard-preset-label { font-size: 11px; color: var(--muted); }
+
+.wizard-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; max-height: 220px; }
+
+/* Subnet box inside the wizard list — fixed width so network text stays inside */
+.wizard-subnet-box { width: 120px; flex-shrink: 0; padding: 6px 8px; overflow: hidden; }
+.wizard-subnet-box .topo-subnet-net { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wizard-empty { color: var(--muted); font-size: 12px; padding: 10px 0; }
+
+.wizard-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 8px 10px;
+}
+.wizard-item-info {
+  flex: 1; display: flex; flex-direction: column; gap: 3px;
+  font-size: 12px; color: var(--muted); min-width: 0;
+}
+
+.wizard-add-form {
+  margin-top: 10px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px;
+}
+.wform-row {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px;
+}
+.wform-row label {
+  font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .5px; min-width: 80px; padding-top: 6px; flex-shrink: 0;
+}
+.wform-row input, .wform-row select {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--text); font-size: 12px; padding: 5px 8px;
+}
+.wform-row input:focus, .wform-row select:focus {
+  outline: none; border-color: var(--accent);
+}
+.wform-row small { font-size: 10px; color: var(--muted); margin-top: 6px; display: block; }
+.wform-checks { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
+.wform-check { display: flex; align-items: center; gap: 5px; font-size: 12px; cursor: pointer; }
+.wform-check input { width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+
+.wizard-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Review step */
+.review-section { margin-bottom: 14px; }
+.review-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--muted); margin-bottom: 6px;
+}
+.review-row {
+  display: flex; align-items: center; gap: 8px; padding: 5px 0;
+  border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.review-connect {
+  display: flex; align-items: center; gap: 8px; padding: 5px 0;
+  border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600;
+}
+.review-connect span { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: auto; }
+.review-connect.ok   { color: var(--green); }
+.review-connect.iso  { color: var(--muted); }
+
+/* Step content scrolls; bar and footer stay fixed */
+#wStep1, #wStep2, #wStep3 { overflow-y: auto; flex: 1; min-height: 0; }
 
 /* ── Loading ─────────────────────────────────────────────────────────────── */
 .loading { color: var(--muted); font-size: 13px; padding: 16px; }

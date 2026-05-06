@@ -287,11 +287,25 @@ def register_vbox(vbox_path, name=None):
         if '"' in line:
             before.add(line.split('"')[1])
 
-    # Check if already registered
+    # Check if already registered by the requested name
     if name and name in before:
         log.info(f"VM '{name}' already registered, skipping.")
         disable_all_nics(name)
         return name
+
+    # Check if the .vbox file is already registered under a different name
+    # (e.g. Kali imported as 'kali-linux-2025.4-virtualbox-amd64' but we want 'Attacker')
+    abs_vbox = os.path.abspath(vbox_path)
+    for vm_name in before:
+        info = vbox.run(["showvminfo", vm_name, "--machinereadable"], check=False) or ""
+        for line in info.splitlines():
+            if line.startswith("CfgFile="):
+                registered = line.split("=", 1)[1].strip('"').replace("\\\\", "\\")
+                if os.path.abspath(registered) == abs_vbox:
+                    log.info(f"VM '{os.path.basename(vbox_path)}' already registered "
+                             f"as '{vm_name}', reusing.")
+                    disable_all_nics(vm_name)
+                    return vm_name
 
     log.info(f"Registering VM from: {os.path.basename(vbox_path)}...")
     result = vbox.run(["registervm", vbox_path])
