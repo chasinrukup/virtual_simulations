@@ -416,8 +416,8 @@ async function openSshDialog(vmName) {
   _sshVm = vmName;
   document.getElementById("sshDialogTitle").textContent = `SSH: ${vmName}`;
   document.getElementById("sshIp").value    = "";
-  document.getElementById("sshUser").value  = "john";
-  document.getElementById("sshPass").value  = "admin";
+  document.getElementById("sshUser").value  = "";
+  document.getElementById("sshPass").value  = "";
   document.getElementById("sshIpHint").textContent = "Looking up IP address…";
   document.getElementById("sshConnectBtn").disabled = true;
   document.getElementById("sshDialog").style.display = "flex";
@@ -434,9 +434,9 @@ async function openSshDialog(vmName) {
       document.getElementById("sshIpHint").textContent = "✓ IP found automatically";
       document.getElementById("sshIpHint").style.color = "var(--green)";
     } else {
-      const rangeHint = data.hint ? ` (DHCP range: ${data.hint})` : "";
+      const rangeHint = data.hint ? ` Expected range: ${data.hint}` : "";
       document.getElementById("sshIpHint").textContent =
-        `Not in ARP cache yet — enter IP manually${rangeHint}. Tip: run 'arp -a' in cmd.`;
+        `VM may still be booting — wait 30 s and try again, or enter IP manually.${rangeHint}`;
       document.getElementById("sshIpHint").style.color = "var(--yellow)";
     }
     if (data.ssh_note) {

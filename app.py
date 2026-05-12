@@ -59,7 +59,7 @@ def _append_log(msg):
 # Update here if your images use different credentials.
 _VM_CREDS = {
     "emyers_unbuntu_vsftpd.ova":              {"user": "john",  "pass": "admin"},
-    "emyers-vulnhu-php":                      {"user": "john",  "pass": "admin"},
+    "emyers-vulnhu-php":                      {"user": "user",  "pass": "live"},
     "pfSense_export.ova":                     {"user": "john",  "pass": "admin",
                                                "note": "web UI at https://gateway-ip"},
     "kali-linux-2025.4-virtualbox-amd64":     {"user": "kali",  "pass": "kali"},
@@ -517,7 +517,15 @@ def _vm_creds_by_name(vm_name):
 
 @app.route("/api/vm-ip/<vm_name>")
 def api_vm_ip(vm_name):
-    ip    = _get_vm_ip(vm_name)
+    # Retry up to 4 times (12 s total) — VM may still be getting its DHCP lease
+    ip = None
+    for attempt in range(4):
+        ip = _get_vm_ip(vm_name)
+        if ip:
+            break
+        if attempt < 3:
+            time.sleep(3)
+
     creds = _vm_creds_by_name(vm_name)
     hint  = ""
     with _state_lock:
