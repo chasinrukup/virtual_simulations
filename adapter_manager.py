@@ -115,7 +115,7 @@ def configure_dhcp(adapter_name, server_ip, netmask, lower_ip, upper_ip, enable=
         log.info(f"[OK] DHCP disabled on '{adapter_name}'")
         return True
 
-    # Create new DHCP server
+    # Create new DHCP server (8-hour leases so they outlast any demo session)
     result = vbox.run([
         "dhcpserver", "add",
         "--network", network_name,
@@ -123,10 +123,14 @@ def configure_dhcp(adapter_name, server_ip, netmask, lower_ip, upper_ip, enable=
         "--netmask", netmask,
         "--lower-ip", lower_ip,
         "--upper-ip", upper_ip,
+        "--default-lease-time", "28800",
+        "--max-lease-time", "28800",
         "--enable",
     ])
 
     if result is not None:
+        # Start the DHCP server process (VirtualBox 6.1+ requires explicit start)
+        vbox.run(["dhcpserver", "start", "--network", network_name], check=False)
         log.info(f"[OK] DHCP on '{adapter_name}': {lower_ip} - {upper_ip} "
                  f"(server: {server_ip})")
         return True
