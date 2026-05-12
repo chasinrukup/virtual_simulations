@@ -2,25 +2,26 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:        #0f1117;
-  --surface:   #1a1d27;
-  --surface2:  #22263a;
-  --border:    #2e3348;
-  --text:      #e2e8f0;
-  --muted:     #8892a4;
-  --accent:    #4f8ef7;
-  --green:     #34d399;
-  --yellow:    #fbbf24;
-  --red:       #f87171;
-  --wan:       #f97316;
-  --lan:       #4f8ef7;
-  --dmz:       #34d399;
-  --mgmt:      #a78bfa;
+  --bg:        #ffffff;
+  --surface:   #f8f9fb;
+  --surface2:  #f1f3f6;
+  --border:    #e2e6ec;
+  --text:      #1a1d2e;
+  --muted:     #6b7280;
+  --accent:    #2563eb;
+  --green:     #059669;
+  --yellow:    #d97706;
+  --red:       #dc2626;
+  --wan:       #ea580c;
+  --lan:       #2563eb;
+  --dmz:       #059669;
+  --mgmt:      #7c3aed;
   --font-mono: "Cascadia Code", "Fira Code", "Consolas", monospace;
 }
 
 html, body { height: 100%; font-family: system-ui, sans-serif; font-size: 14px;
-  background: var(--bg); color: var(--text); overflow: hidden; }
+  background: var(--bg); color: var(--text); overflow: hidden;
+  -webkit-font-smoothing: antialiased; }
 
 /* ── Header ────────────────────────────────────────────────────────────── */
 header {
@@ -78,10 +79,10 @@ header {
 .scenario-name { font-weight: 600; font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scenario-badge {
   font-size: 11px; padding: 2px 7px; border-radius: 10px;
-  background: var(--surface); color: var(--muted);
+  background: var(--surface2); color: var(--muted); border: 1px solid var(--border);
 }
-.scenario-badge.ok { background: rgba(52,211,153,.15); color: var(--green); }
-.scenario-badge.na { background: rgba(248,113,113,.15); color: var(--red); }
+.scenario-badge.ok { background: #d1fae5; color: var(--green); border-color: #a7f3d0; }
+.scenario-badge.na { background: #fee2e2; color: var(--red); border-color: #fca5a5; }
 
 .scenario-body { padding: 10px 12px; display: none; }
 .scenario-card.open .scenario-body { display: block; }
@@ -92,7 +93,7 @@ header {
 }
 .scenario-layout {
   font-family: var(--font-mono); font-size: 11px; color: var(--accent);
-  background: rgba(79,142,247,.06); border: 1px solid rgba(79,142,247,.15);
+  background: #eff6ff; border: 1px solid #bfdbfe;
   border-radius: 5px; padding: 8px 10px; margin-bottom: 10px;
   white-space: pre; overflow-x: auto;
 }
@@ -103,7 +104,7 @@ header {
 
 .scenario-missing {
   font-size: 11px; color: var(--red); margin-bottom: 8px;
-  background: rgba(248,113,113,.08); border-radius: 4px; padding: 6px 8px;
+  background: #fee2e2; border-radius: 4px; padding: 6px 8px;
 }
 
 /* ── Main content ────────────────────────────────────────────────────────── */
@@ -163,7 +164,7 @@ header {
 }
 .topo-vm-card.topo-vm-clickable { cursor: pointer; }
 .topo-vm-card.topo-vm-clickable:hover {
-  background: rgba(79,142,247,.15); border-color: var(--accent);
+  background: #eff6ff; border-color: var(--accent);
 }
 .topo-vm-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; }
 .topo-vm-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
@@ -180,7 +181,7 @@ header {
 .topo-fw-box.topo-fw-clickable:hover .topo-fw-label { border-color: var(--accent); color: var(--accent); }
 .topo-fw-label {
   font-size: 10px; font-weight: 700; color: var(--accent);
-  background: rgba(79,142,247,.12); border: 1px solid rgba(79,142,247,.3);
+  background: #eff6ff; border: 1px solid #bfdbfe;
   border-radius: 5px; padding: 3px 8px; white-space: nowrap;
 }
 .topo-fw-sub  { font-size: 9px; color: var(--muted); text-align: center; }
@@ -189,7 +190,7 @@ header {
 /* SSH badge on running VMs */
 .topo-vm-ssh {
   font-size: 9px; font-weight: 700; color: var(--accent);
-  background: rgba(79,142,247,.15); border-radius: 3px;
+  background: #eff6ff; border-radius: 3px;
   padding: 1px 4px; flex-shrink: 0;
 }
 
@@ -212,23 +213,23 @@ header {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11px; padding: 2px 8px; border-radius: 10px;
 }
-.state-running { background: rgba(52,211,153,.15); color: var(--green); }
-.state-poweroff { background: rgba(136,146,164,.1); color: var(--muted); }
-.state-other    { background: rgba(251,191,36,.1);  color: var(--yellow); }
+.state-running  { background: #d1fae5; color: var(--green); }
+.state-poweroff { background: #f3f4f6; color: var(--muted); }
+.state-other    { background: #fef3c7; color: var(--yellow); }
 
 .role-badge {
   font-size: 10px; padding: 2px 6px; border-radius: 4px;
   background: var(--surface2); color: var(--muted);
   border: 1px solid var(--border);
 }
-.role-firewall { color: var(--accent); border-color: rgba(79,142,247,.3); }
+.role-firewall { color: var(--accent); background: #eff6ff; border-color: #bfdbfe; }
 
 /* ── SSH info ────────────────────────────────────────────────────────────── */
 .ssh-info  { font-size: 11px; line-height: 1.6; word-break: break-word; overflow-wrap: anywhere; }
 .ssh-cmd   { color: var(--text); font-family: var(--font-mono); }
 .ssh-range { color: var(--accent); font-style: italic; }
 .ssh-pass  { color: var(--muted); font-family: var(--font-mono); }
-.ssh-pass code { color: var(--green); background: rgba(52,211,153,.08);
+.ssh-pass code { color: var(--green); background: #d1fae5;
                  border-radius: 3px; padding: 0 4px; }
 .ssh-note  { color: var(--yellow); font-size: 10px; margin-top: 2px; }
 .ssh-na    { color: var(--border); }
@@ -247,7 +248,7 @@ header {
 #logOutput {
   flex: 1; overflow-y: auto; padding: 10px 14px;
   font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
-  color: var(--muted); height: 100%;
+  color: var(--muted); height: 100%; background: #fafafa;
 }
 .log-ok    { color: var(--green); }
 .log-err   { color: var(--red); }
@@ -263,30 +264,31 @@ header {
 .btn:not(:disabled):hover { opacity: .85; }
 
 .btn-primary { background: var(--accent); color: #fff; }
-.btn-warn    { background: rgba(251,191,36,.15); color: var(--yellow);
-               border: 1px solid rgba(251,191,36,.3); }
-.btn-danger  { background: rgba(248,113,113,.15); color: var(--red);
-               border: 1px solid rgba(248,113,113,.3); }
-.btn-ghost   { background: var(--surface2); color: var(--muted);
+.btn-warn    { background: #fef3c7; color: var(--yellow);
+               border: 1px solid #fcd34d; }
+.btn-danger  { background: #fee2e2; color: var(--red);
+               border: 1px solid #fca5a5; }
+.btn-ghost   { background: #ffffff; color: var(--muted);
                border: 1px solid var(--border); }
 
 /* ── SSH terminal overlay ────────────────────────────────────────────────── */
 .ssh-term-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  position: fixed; inset: 0; background: rgba(0,0,0,.5);
   display: flex; align-items: center; justify-content: center; z-index: 200;
 }
 .ssh-term-window {
   width: 900px; height: 560px; max-width: 96vw; max-height: 90vh;
-  background: #0f1117; border: 1px solid var(--border); border-radius: 10px;
+  background: #0d1117; border: 1px solid #30363d; border-radius: 10px;
   display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.4);
 }
 .ssh-term-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 14px; background: var(--surface); border-bottom: 1px solid var(--border);
+  padding: 8px 14px; background: #161b22; border-bottom: 1px solid #30363d;
   flex-shrink: 0;
 }
-.ssh-term-title  { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
-.ssh-term-status { font-size: 11px; color: var(--yellow); }
+.ssh-term-title  { font-family: var(--font-mono); font-size: 12px; color: #e6edf3; }
+.ssh-term-status { font-size: 11px; color: #d29922; }
 .ssh-term-body   { flex: 1; min-height: 0; padding: 6px; }
 /* xterm.js fills its parent */
 .ssh-term-body .xterm { height: 100%; }
@@ -302,11 +304,11 @@ header {
   cursor: pointer; transition: background .15s, border-color .15s;
 }
 .topo-vm-clickable:hover {
-  background: rgba(79,142,247,.15); border-color: var(--accent);
+  background: #eff6ff; border-color: var(--accent);
 }
 .topo-vm-ssh {
   font-size: 9px; font-weight: 700; color: var(--accent);
-  background: rgba(79,142,247,.15); border-radius: 3px;
+  background: #eff6ff; border-radius: 3px;
   padding: 1px 4px; margin-left: auto; flex-shrink: 0;
 }
 
@@ -317,12 +319,13 @@ header {
 
 /* ── Modal ───────────────────────────────────────────────────────────────── */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  position: fixed; inset: 0; background: rgba(0,0,0,.4);
   display: flex; align-items: center; justify-content: center; z-index: 100;
 }
 .modal {
-  background: var(--surface); border: 1px solid var(--border);
+  background: #ffffff; border: 1px solid var(--border);
   border-radius: 12px; width: 480px; padding: 24px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.12);
 }
 .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
 .modal-body  { color: var(--muted); font-size: 13px; line-height: 1.7;
@@ -341,13 +344,13 @@ header {
   font-size: 12px; font-weight: 600; color: var(--muted);
   padding: 4px 10px; border-radius: 5px;
 }
-.wizard-bar-step.active { background: rgba(79,142,247,.15); color: var(--accent); }
+.wizard-bar-step.active { background: #eff6ff; color: var(--accent); }
 .wizard-bar-step.done   { color: var(--green); }
 .wizard-bar-sep { color: var(--border); font-size: 16px; }
 
 .wizard-hint {
   font-size: 12px; color: var(--muted); line-height: 1.7;
-  background: rgba(79,142,247,.05); border: 1px solid rgba(79,142,247,.12);
+  background: #f0f9ff; border: 1px solid #bae6fd;
   border-radius: 6px; padding: 10px 12px; margin-bottom: 12px;
 }
 .wizard-hint b { color: var(--text); }
