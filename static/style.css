@@ -264,12 +264,15 @@ header {
 .btn:not(:disabled):hover { opacity: .85; }
 
 .btn-primary { background: var(--accent); color: #fff; }
+.btn-accent  { background: #0891b2; color: #fff; }
 .btn-warn    { background: #fef3c7; color: var(--yellow);
                border: 1px solid #fcd34d; }
 .btn-danger  { background: #fee2e2; color: var(--red);
                border: 1px solid #fca5a5; }
 .btn-ghost   { background: #ffffff; color: var(--muted);
                border: 1px solid var(--border); }
+
+.vm-restart-btn { padding: 5px 9px; font-size: 14px; }
 
 /* ── SSH terminal overlay ────────────────────────────────────────────────── */
 .ssh-term-overlay {

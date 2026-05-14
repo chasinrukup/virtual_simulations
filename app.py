@@ -8,6 +8,7 @@ import os
 import sys
 import threading
 import time
+import json
 
 import re
 import subprocess
@@ -81,6 +82,144 @@ _state = {
     "is_prebuilt":   False,    # True when deployed via /api/deploy (pre-built scenario)
 }
 _state_lock = threading.Lock()
+
+# ── State persistence ─────────────────────────────────────────────────────────
+
+STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lab_state.json")
+
+
+def _config_to_dict(config):
+    if config is None:
+        return None
+    return {
+        "subnets": [
+            {
+                "name":         s.name,
+                "network":      s.network,
+                "gateway_ip":   s.gateway_ip,
+                "netmask":      s.netmask,
+                "adapter_name": s.adapter_name,
+                "dhcp": {
+                    "enabled":   s.dhcp.enabled,
+                    "server_ip": s.dhcp.server_ip,
+                    "lower_ip":  s.dhcp.lower_ip,
+                    "upper_ip":  s.dhcp.upper_ip,
+                    "netmask":   s.dhcp.netmask,
+                } if s.dhcp else None,
+            }
+            for s in config.subnets
+        ],
+        "vms": [
+            {
+                "name":       v.name,
+                "ostype":     v.ostype,
+                "ram_mb":     v.ram_mb,
+                "cpus":       v.cpus,
+                "disk_mb":    v.disk_mb,
+                "iso_path":   v.iso_path,
+                "image_type": v.image_type,
+                "role":       v.role,
+                "subnets":    v.subnets,
+            }
+            for v in config.vms
+        ],
+        "firewalls": [
+            {
+                "vm_name":     f.vm_name,
+                "wan_subnet":  f.wan_subnet,
+                "lan_subnets": f.lan_subnets,
+            }
+            for f in config.firewalls
+        ],
+    }
+
+
+def _config_from_dict(d):
+    from models import LabConfig, Subnet, DHCPConfig, VMConfig, FirewallConfig
+    if d is None:
+        return None
+    subnets = []
+    for s in d.get("subnets", []):
+        dhcp = None
+        if s.get("dhcp"):
+            dhcp = DHCPConfig(
+                enabled=s["dhcp"].get("enabled", True),
+                server_ip=s["dhcp"].get("server_ip", ""),
+                lower_ip=s["dhcp"].get("lower_ip", ""),
+                upper_ip=s["dhcp"].get("upper_ip", ""),
+                netmask=s["dhcp"].get("netmask", "255.255.255.0"),
+            )
+        subnets.append(Subnet(
+            name=s["name"], network=s["network"],
+            gateway_ip=s["gateway_ip"],
+            netmask=s.get("netmask", "255.255.255.0"),
+            adapter_name=s.get("adapter_name", ""),
+            dhcp=dhcp,
+        ))
+    vms = []
+    for v in d.get("vms", []):
+        vms.append(VMConfig(
+            name=v["name"], ostype=v.get("ostype", "Other_64"),
+            ram_mb=v.get("ram_mb", 2048), cpus=v.get("cpus", 2),
+            disk_mb=v.get("disk_mb", 0), iso_path=v.get("iso_path", ""),
+            image_type=v.get("image_type", "ova"), role=v.get("role", "endpoint"),
+            subnets=v.get("subnets", []),
+        ))
+    firewalls = []
+    for f in d.get("firewalls", []):
+        firewalls.append(FirewallConfig(
+            vm_name=f["vm_name"], wan_subnet=f["wan_subnet"],
+            lan_subnets=f.get("lan_subnets", []),
+        ))
+    return LabConfig(subnets=subnets, vms=vms, firewalls=firewalls)
+
+
+def _save_state():
+    try:
+        with _state_lock:
+            s = dict(_state)
+        data = {
+            "status":        s["status"],
+            "scenario_name": s["scenario_name"],
+            "is_prebuilt":   s.get("is_prebuilt", False),
+            "config":        _config_to_dict(s["config"]),
+        }
+        with open(STATE_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+
+def _load_state():
+    if not os.path.exists(STATE_FILE):
+        return
+    try:
+        with open(STATE_FILE) as f:
+            data = json.load(f)
+        config = _config_from_dict(data.get("config"))
+        status = data.get("status", "idle")
+        # Transient states can't survive a restart
+        if status in ("deploying", "stopping"):
+            status = "idle"
+        # Verify VMs are actually still running
+        if status == "running" and config:
+            raw     = vm_manager.list_running_vms()
+            running = set()
+            for line in raw.splitlines():
+                if '"' in line:
+                    running.add(line.split('"')[1])
+            if not {v.name for v in config.vms}.intersection(running):
+                status = "idle"
+                config = None
+        with _state_lock:
+            _state["status"]        = status
+            _state["scenario_name"] = data.get("scenario_name")
+            _state["is_prebuilt"]   = data.get("is_prebuilt", False)
+            _state["config"]        = config
+        if status == "running":
+            get_logger().info(f"[OK] Restored lab state: {data.get('scenario_name')}")
+    except Exception as e:
+        get_logger().warning(f"Could not restore saved state: {e}")
 
 # ── VNC desktop proxy processes (one per Kali VM) ─────────────────────────────
 _vnc_proxies     = {}   # {vm_name: subprocess.Popen}
@@ -178,6 +317,7 @@ def api_deploy():
 
         with _state_lock:
             _state["status"] = "running" if success else "idle"
+        _save_state()
 
         if not success:
             _append_log("=== DEPLOYMENT FAILED ===")
@@ -213,14 +353,16 @@ def api_status():
         for vm in config.vms:
             creds = _get_creds(vm.iso_path)
             vms.append({
-                "name":     vm.name,
-                "role":     vm.role,
-                "subnets":  vm.subnets,
-                "state":    vm_manager.get_vm_state(vm.name),
-                "ssh_user": creds.get("user", ""),
-                "ssh_pass": creds.get("pass", ""),
-                "ssh_note": creds.get("note", ""),
-                "is_kali":  "kali" in (vm.iso_path or "").lower(),
+                "name":        vm.name,
+                "role":        vm.role,
+                "subnets":     vm.subnets,
+                "state":       vm_manager.get_vm_state(vm.name),
+                "ssh_user":    creds.get("user", ""),
+                "ssh_pass":    creds.get("pass", ""),
+                "ssh_note":    creds.get("note", ""),
+                "is_kali":     "kali"    in (vm.iso_path or "").lower(),
+                "is_firewall": vm.role == "firewall",
+                "is_pfsense":  "pfsense" in (vm.iso_path or "").lower(),
             })
 
     with _state_lock:
@@ -260,6 +402,7 @@ def api_stop():
         deployer.stop_all(config, force=True)
         with _state_lock:
             _state["status"] = "stopped"
+        _save_state()
         _append_log("All VMs stopped.")
 
     threading.Thread(target=_run, daemon=True).start()
@@ -283,6 +426,7 @@ def api_teardown():
             _state["config"]        = None
             _state["scenario_name"] = None
             _state["is_prebuilt"]   = False
+        _save_state()
         _append_log("Lab deleted. Ready for next deployment.")
 
     threading.Thread(target=_run, daemon=True).start()
@@ -481,6 +625,7 @@ def api_custom_deploy():
 
         with _state_lock:
             _state["status"] = "running" if success else "idle"
+        _save_state()
 
         if not success:
             _append_log("=== DEPLOYMENT FAILED ===")
@@ -493,13 +638,64 @@ def api_custom_deploy():
 
 def _get_vm_mac(vm_name):
     """Return NIC1 MAC address for a VM (formatted as AA-BB-CC-DD-EE-FF)."""
+    return _get_vm_mac_nic(vm_name, 1)
+
+
+def _get_vm_mac_nic(vm_name, nic_num=1):
+    """Return MAC for a specific NIC number (AA-BB-CC-DD-EE-FF)."""
     info = vbox.run(["showvminfo", vm_name, "--machinereadable"], check=False) or ""
     for line in info.splitlines():
-        if line.startswith("macaddress1="):
+        if line.startswith(f"macaddress{nic_num}="):
             raw = line.split("=")[1].strip('"').upper()
             if len(raw) == 12:
                 return "-".join(raw[i:i+2] for i in range(0, 12, 2))
     return None
+
+
+# ── Per-VM restart ────────────────────────────────────────────────────────────
+
+@app.route("/api/vm/restart/<vm_name>", methods=["POST"])
+def api_vm_restart(vm_name):
+    """Stop and restart a single VM without tearing down the whole lab."""
+    _append_log(f"Restarting {vm_name}…")
+    def _run():
+        state = vm_manager.get_vm_state(vm_name)
+        if state == "running":
+            vm_manager.stop_vm(vm_name, force=True)
+            time.sleep(4)
+        vm_manager.start_vm(vm_name, headless=False)
+        _append_log(f"[OK] {vm_name} restarted — wait ~60 s for boot + DHCP")
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"ok": True})
+
+
+# ── Firewall IP discovery (all NICs) ─────────────────────────────────────────
+
+@app.route("/api/firewall-ips/<vm_name>")
+def api_firewall_ips(vm_name):
+    """Return one IP per NIC for a firewall VM (used to open the web UI)."""
+    with _state_lock:
+        config = _state["config"]
+    if not config:
+        return jsonify({"ips": []})
+
+    vm_cfg = next((v for v in config.vms if v.name == vm_name), None)
+    if not vm_cfg:
+        return jsonify({"ips": []})
+
+    result = []
+    for idx, subnet_name in enumerate(vm_cfg.subnets, 1):
+        mac = _get_vm_mac_nic(vm_name, idx)
+        ip  = None
+        if mac:
+            ip = _arp_lookup(mac) or _dhcp_lease_lookup(mac)
+            if ip:
+                # Warm ARP cache
+                subprocess.Popen(["ping", "-n", "1", "-w", "300", ip],
+                                 stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL).wait()
+        result.append({"nic": idx, "subnet": subnet_name, "ip": ip})
+    return jsonify({"ips": result})
 
 
 
@@ -831,6 +1027,7 @@ def api_vm_desktop_stop():
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    _load_state()
     print(f"\n  Virtual Network Simulation Lab")
     print(f"  Open in browser: http://localhost:{web_config.PORT}\n")
     app.run(host=web_config.HOST, port=web_config.PORT, debug=False, threaded=True)

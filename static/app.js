@@ -253,17 +253,20 @@ function renderTopology(data) {
       const conn = document.createElement("div");
       conn.className = "topo-connector";
       if (fw) {
-        const fwVm  = (data.vms || []).find(v => v.name === fw.vm_name);
-        const fwCol = stateColor(fwVm ? fwVm.state : "unknown");
-        const canSsh = fwVm && fwVm.state === "running";
+        const fwVm      = (data.vms || []).find(v => v.name === fw.vm_name);
+        const fwCol     = stateColor(fwVm ? fwVm.state : "unknown");
+        const canAct    = fwVm && fwVm.state === "running";
+        const isPfsense = fwVm && fwVm.is_pfsense;
+        const fwAction  = isPfsense ? `openFirewallWebUI('${fw.vm_name}')` : `openSshDialog('${fw.vm_name}')`;
+        const fwTip     = isPfsense ? " — click for Web UI" : " — click to SSH";
         conn.innerHTML = `
           <div class="topo-line"></div>
-          <div class="topo-fw-box${canSsh ? " topo-fw-clickable" : ""}"
-               ${canSsh ? `onclick="openSshDialog('${fw.vm_name}')"` : ""}
-               title="${fw.vm_name}${canSsh ? " — click to SSH" : ""}">
+          <div class="topo-fw-box${canAct ? " topo-fw-clickable" : ""}"
+               ${canAct ? `onclick="${fwAction}"` : ""}
+               title="${fw.vm_name}${canAct ? fwTip : ""}">
             <div class="topo-fw-label">
               <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${fwCol};margin-right:4px;vertical-align:middle"></span>
-              &#9650; ${fw.vm_name}
+              &#9650; ${fw.vm_name}${isPfsense ? " &#127760;" : ""}
             </div>
             <div class="topo-fw-sub">${fw.wan} ↔ ${fw.lan.join(", ")}</div>
           </div>
@@ -328,36 +331,46 @@ function renderVmTable(data) {
   });
 
   const rows = data.vms.map(vm => {
-    const isfw   = fwNames.has(vm.name);
-    const stCls  = vm.state === "running"  ? "state-running"
-                 : vm.state === "poweroff" ? "state-poweroff" : "state-other";
-    const rolCls = isfw ? "role-badge role-firewall" : "role-badge";
+    const isfw      = fwNames.has(vm.name);
+    const stCls     = vm.state === "running"  ? "state-running"
+                    : vm.state === "poweroff" ? "state-poweroff" : "state-other";
+    const rolCls    = isfw ? "role-badge role-firewall" : "role-badge";
     const roleLabel = isfw ? "firewall" : vm.role;
-    const subnets = vm.subnets.join(", ");
+    const subnets   = vm.subnets.join(", ");
+    const isRunning = vm.state === "running";
 
-    // SSH info cell
-    let sshHtml = "";
+    // Credentials hint
+    let credHtml = "";
     if (!isfw && vm.ssh_user) {
       const range = vm.subnets.map(s => subnetRanges[s]).filter(Boolean).join(" / ") || "see subnet";
       const note  = vm.ssh_note ? `<div class="ssh-note">${vm.ssh_note}</div>` : "";
-      sshHtml = `
+      credHtml = `
         <div class="ssh-info">
           <div class="ssh-cmd">ssh ${vm.ssh_user}@<span class="ssh-range">[${range}]</span></div>
           <div class="ssh-pass">pass: <code>${vm.ssh_pass}</code></div>
           ${note}
         </div>`;
     } else if (isfw && vm.ssh_user) {
-      const note  = vm.ssh_note ? `<div class="ssh-note">${vm.ssh_note}</div>` : "";
-      sshHtml = `<div class="ssh-info"><div class="ssh-pass">user: <code>${vm.ssh_user}</code> / pass: <code>${vm.ssh_pass}</code></div>${note}</div>`;
+      credHtml = `<div class="ssh-info">
+        <div class="ssh-pass">user: <code>${vm.ssh_user}</code> / pass: <code>${vm.ssh_pass}</code></div>
+        ${vm.is_pfsense ? '<div class="ssh-note">Web UI: https://&lt;lan-ip&gt; — admin / pfsense</div>' : ''}
+      </div>`;
     }
-    if (vm.state === "running") {
+
+    // Action buttons
+    let actHtml = "";
+    if (isRunning) {
       if (vm.is_kali) {
-        sshHtml += `<button class="btn btn-primary ssh-term-btn" onclick="openDesktop('${vm.name}')">🖥 Desktop</button>`;
+        actHtml += `<button class="btn btn-primary ssh-term-btn" onclick="openDesktop('${vm.name}')">&#128187; Desktop</button>`;
+      } else if (vm.is_pfsense) {
+        actHtml += `<button class="btn btn-accent ssh-term-btn" onclick="openFirewallWebUI('${vm.name}')">&#127760; Web UI</button>`;
+        actHtml += `<button class="btn btn-primary ssh-term-btn" onclick="openSshDialog('${vm.name}')">&#11042; SSH</button>`;
       } else {
-        sshHtml += `<button class="btn btn-primary ssh-term-btn" onclick="openSshDialog('${vm.name}')">⬢ Terminal</button>`;
+        actHtml += `<button class="btn btn-primary ssh-term-btn" onclick="openSshDialog('${vm.name}')">&#11042; Terminal</button>`;
       }
-    } else if (!sshHtml) {
-      sshHtml = "<span class=\"ssh-na\">—</span>";
+      actHtml += `<button class="btn btn-warn vm-restart-btn" onclick="restartVm('${vm.name}')" title="Restart this VM">&#8635;</button>`;
+    } else if (!credHtml) {
+      actHtml = "<span class=\"ssh-na\">—</span>";
     }
 
     return `<tr>
@@ -365,14 +378,14 @@ function renderVmTable(data) {
       <td><span class="${rolCls}">${roleLabel}</span></td>
       <td>${subnets}</td>
       <td><span class="state-badge ${stCls}">&#9679; ${vm.state}</span></td>
-      <td>${sshHtml}</td>
+      <td>${credHtml}${actHtml}</td>
     </tr>`;
   }).join("");
 
   el.innerHTML = `
     <table class="vm-table">
       <thead><tr>
-        <th>Name</th><th>Role</th><th>Subnets</th><th>State</th><th>SSH Access</th>
+        <th>Name</th><th>Role</th><th>Subnets</th><th>State</th><th>Actions</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
@@ -406,6 +419,45 @@ async function stopAll() {
 async function teardown() {
   if (!confirm("Stop and DELETE all VMs in this lab?")) return;
   await fetch("/api/teardown", {method: "POST"});
+}
+
+/* ── Per-VM restart ──────────────────────────────────────────────────────── */
+
+async function restartVm(vmName) {
+  if (!confirm(`Restart "${vmName}"? It will be force-stopped then started again.`)) return;
+  const res  = await fetch(`/api/vm/restart/${encodeURIComponent(vmName)}`, {method: "POST"});
+  const data = await res.json();
+  if (data.error) appendLog("Restart error: " + data.error, "log-err");
+}
+
+/* ── Firewall Web UI ─────────────────────────────────────────────────────── */
+
+async function openFirewallWebUI(vmName) {
+  appendLog(`Looking up ${vmName} interface IPs…`, "log-info");
+  let data;
+  try {
+    const res = await fetch(`/api/firewall-ips/${encodeURIComponent(vmName)}`);
+    data = await res.json();
+  } catch (e) {
+    appendLog("Could not reach server: " + e, "log-err");
+    return;
+  }
+
+  const found = (data.ips || []).filter(n => n.ip);
+  if (!found.length) {
+    appendLog(`${vmName}: no IPs found yet — VM may still be booting. Try again in 30 s.`, "log-err");
+    return;
+  }
+
+  // Prefer LAN NIC (NIC 2+) over WAN for the web UI
+  const best = found.find(n => n.nic >= 2) || found[0];
+  const url  = `https://${best.ip}`;
+  appendLog(`Opening pfSense Web UI at ${url} (${best.subnet}) — accept the self-signed cert`, "log-ok");
+
+  // Log all found IPs for reference
+  found.forEach(n => appendLog(`  NIC${n.nic} (${n.subnet}): ${n.ip}`, "log-info"));
+
+  window.open(url, "_blank");
 }
 
 /* ── SSH Dialog ──────────────────────────────────────────────────────────── */
