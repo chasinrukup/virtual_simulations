@@ -8,149 +8,181 @@ A web-based network simulation platform that spins up real VirtualBox VMs into i
 - **Custom lab builder** — wizard to define subnets (WAN/LAN/DMZ/MGMT/DEV) and place VMs on them
 - **In-browser SSH terminal** — click any running VM to open a shell session
 - **Kali desktop** — click the Kali VM to open a full GUI via noVNC
-- **Background ping test** — after deploying a prebuilt scenario, automatically SSHs into each VM and pings all others, logging results live
+- **Background ping test** — SSHs into each VM and pings all others, logging results live
 - **One-click teardown** — stop or delete the entire lab from the UI
 
 ---
 
-## Requirements
+## System Requirements
 
-| Requirement | Notes |
-|---|---|
-| **Windows 10/11** (64-bit) | Host OS — tested on Windows 10 Pro |
-| **VirtualBox 7.x** | Must be installed and `VBoxManage` on PATH |
-| **Python 3.10+** | For the Flask web server |
-| **~50 GB free disk** | For VM images |
-| **16 GB RAM** | Recommended; 8 GB minimum for small scenarios |
-
-### Python packages
-
-```
-pip install flask flask-sock paramiko
-```
+| Requirement | Version | Notes |
+|---|---|---|
+| **Windows** | 10 or 11 (64-bit) | Host OS — tested on Windows 10 Pro |
+| **VirtualBox** | 7.x | Download from virtualbox.org |
+| **Python** | 3.10 or newer | Download from python.org |
+| **Free disk** | ~50 GB | For VM images |
+| **RAM** | 16 GB recommended | 8 GB minimum for small scenarios |
 
 ---
 
-## VM Images (Required)
+## Step 1 — Install VirtualBox
 
-The app looks for VM images in a sibling folder called `virtual_simulations` (one level up from this repo). The expected layout is:
+1. Download VirtualBox 7.x from https://www.virtualbox.org/wiki/Downloads
+2. Run the installer with default settings
+3. After install, verify it works by opening **PowerShell** and running:
 
-```
-parent-folder/
-├── virtual_simulations/          ← put images here
-│   ├── emyers_unbuntu_vsftpd.ova
-│   ├── pfSense_export.ova
-│   ├── emyers-vulnhu-php/        ← registered VirtualBox VM (clone source)
-│   └── kali-linux-2025.4-virtualbox-amd64/  ← registered VirtualBox VM
-└── virtual_simulations_web/      ← this repo
+```powershell
+& "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" --version
 ```
 
-### Changing the images path
+Expected output: `7.x.x` (any 7.x version is fine)
 
-Edit `web_config.py`:
+---
+
+## Step 2 — Install Python
+
+1. Download Python 3.10+ from https://www.python.org/downloads/
+2. During install, **check "Add Python to PATH"**
+3. Verify in PowerShell:
+
+```powershell
+python --version
+```
+
+Expected output: `Python 3.10.x` or newer
+
+---
+
+## Step 3 — Install Required Python Libraries
+
+Open PowerShell and run this single command:
+
+```powershell
+pip install flask flask-sock paramiko websockify
+```
+
+**What each library does:**
+| Library | Purpose |
+|---|---|
+| `flask` | Web server that powers the browser UI |
+| `flask-sock` | WebSocket support for real-time terminal |
+| `paramiko` | SSH client — connects to VMs from the server |
+| `websockify` | WebSocket-to-TCP bridge for the Kali VNC desktop |
+
+To verify all libraries installed correctly:
+
+```powershell
+python -c "import flask, flask_sock, paramiko, websockify; print('All OK')"
+```
+
+Expected output: `All OK`
+
+---
+
+## Step 4 — Get the VM Images
+
+The app requires specific VM image files to run scenarios. Place them in a folder on your machine.
+
+**Required images:**
+
+| File / Folder | Used by Scenarios | Notes |
+|---|---|---|
+| `emyers_unbuntu_vsftpd.ova` | All scenarios | Ubuntu 18 with vulnerable vsftpd service |
+| `pfSense_export.ova` | 1, 3, 4, 5 | Pre-configured pfSense firewall |
+| `emyers-vulnhu-php/` | 1, 2, 4, 5 | Debian VM with PHP-CGI vuln — folder contains a `.vbox` file |
+| `kali-linux-2025.4-virtualbox-amd64/` | 3, 5 | Kali Linux with VNC — folder contains a `.vbox` file |
+
+Obtain these images from your instructor or course materials.
+
+---
+
+## Step 5 — Clone and Configure the App
+
+```powershell
+git clone https://github.com/chasinrukup/virtual_simulations.git virtual_simulations_web
+cd virtual_simulations_web
+git checkout web
+```
+
+Open `web_config.py` in any text editor and set the path to your VM images folder:
 
 ```python
-IMAGES_DIR = r"C:\path\to\your\images"
+# web_config.py
+IMAGES_DIR = r"C:\path\to\your\images\folder"
 ```
 
-### Required images
+**Example** — if your images are at `C:\Users\john\Downloads\lab_images`:
 
-| File / Folder | Used by | Notes |
-|---|---|---|
-| `emyers_unbuntu_vsftpd.ova` | All scenarios | Ubuntu 18 with vsftpd vulnerable service |
-| `pfSense_export.ova` | Scenarios 1, 3, 4, 5 | Pre-configured pfSense firewall |
-| `emyers-vulnhu-php` | Scenarios 1, 2, 4, 5 | Debian VM with PHP-CGI vuln (CVE-2012-1823) — must be registered in VirtualBox |
-| `kali-linux-2025.4-virtualbox-amd64` | Scenarios 3, 5 | Kali Linux with VNC enabled — must be registered in VirtualBox |
-
-### Registering existing VMs
-
-If you already have a `.vbox` file, register it with VirtualBox before running:
-
-```powershell
-VBoxManage registervm "C:\path\to\kali-linux-2025.4-virtualbox-amd64\kali-linux-2025.4-virtualbox-amd64.vbox"
-VBoxManage registervm "C:\path\to\emyers-vulnhu-php\emyers-vulnhu-php.vbox"
+```python
+IMAGES_DIR = r"C:\Users\john\Downloads\lab_images"
 ```
 
 ---
 
-## VirtualBox Network Setup
+## Step 6 — Register the VirtualBox VMs
 
-The app uses **VirtualBox host-only adapters** to create isolated subnets. You need one adapter per subnet. The app creates them automatically on first deploy, but you can also pre-create them:
+The `emyers-vulnhu-php` and `kali-linux-2025.4-virtualbox-amd64` folders are VirtualBox VM folders (not OVA files). They need to be registered with VirtualBox before the app can clone them.
 
-| Subnet | Network | VirtualBox Adapter |
-|---|---|---|
-| WAN | 192.168.30.0/24 | Host-Only Adapter #3 |
-| LAN | 192.168.40.0/24 | Host-Only Adapter #4 |
-| DMZ | 192.168.50.0/24 | Host-Only Adapter #5 |
-| MGMT | 192.168.60.0/24 | Host-Only Adapter #6 |
-| DEV | 192.168.70.0/24 | Host-Only Adapter #7 |
+Run these commands, replacing the paths with where your images actually are:
+
+```powershell
+& "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" registervm "C:\path\to\images\emyers-vulnhu-php\emyers-vulnhu-php.vbox"
+
+& "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" registervm "C:\path\to\images\kali-linux-2025.4-virtualbox-amd64\kali-linux-2025.4-virtualbox-amd64.vbox"
+```
+
+Verify they are registered:
+
+```powershell
+& "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" list vms
+```
+
+You should see `emyers-vulnhu-php` and `kali-linux-2025.4-virtualbox-amd64` in the list.
 
 ---
 
-## Installation
+## Step 7 — Start the App
 
 ```powershell
-# 1. Clone the repo
-git clone https://github.com/chasinrukup/virtual_simulations_web.git
 cd virtual_simulations_web
-
-# 2. Install Python dependencies
-pip install flask flask-sock paramiko
-
-# 3. Verify VBoxManage is accessible
-VBoxManage --version
-
-# 4. Place VM images in the images folder (see above)
-
-# 5. Start the server
 python app.py
 ```
 
-The web UI is at **http://localhost:8080**
+Expected output:
+```
+  Virtual Network Simulation Lab
+  Open in browser: http://localhost:8080
+```
+
+Open your browser and go to **http://localhost:8080**
 
 ---
 
 ## Usage
 
-### Deploying a prebuilt scenario
+### Deploy a prebuilt scenario
 
-1. Open http://localhost:8080
-2. Click a scenario card in the left sidebar
-3. Review the description and VM list in the modal
-4. Click **Deploy** — VMs import, NICs wire up, VMs start (takes 1–3 minutes)
-5. Watch the **Deployment Log** at the bottom for progress
-6. Once all VMs show green "running" badges, click any VM name to SSH in
+1. Click a scenario card in the left sidebar
+2. Review the description in the popup
+3. Click **Deploy** — VMs import, networks wire up, VMs start (takes 1–5 minutes)
+4. Watch the **Deployment Log** at the bottom for live progress
+5. Once VMs show green **running** badges, click any VM name to SSH in
 
 ### SSH into a VM
 
-- Click the VM name in the **Network Topology** or **VM Status** panel
+- Click a VM name in the **Network Topology** or **VM Status** panel
 - A dialog shows the pre-filled IP, username, and password
-- Click **Open Terminal** — an xterm.js shell opens in the browser
+- Click **Open Terminal** — a terminal opens in the browser
 
-### Kali desktop (noVNC)
+### Run a ping test
 
-- Click the **Kali** VM — a "Open Desktop" button appears instead of SSH
-- Requires VNC to be running inside Kali:
-  ```bash
-  tightvncserver :1 -geometry 1280x800 -depth 24
-  ```
-- The app proxies the VNC connection through a WebSocket
-
-### Ping test (prebuilt mode only)
-
-After a prebuilt lab finishes deploying, the **Ping All VMs** button activates. Click it (or wait — it auto-fires 90 seconds after the lab reaches "running") to SSH into each endpoint VM and ping all others. Results stream into the Deployment Log.
+- Click **Ping All VMs** after a scenario finishes deploying
+- The app SSHs into each VM and pings all others — results appear in the log
 
 ### Stop / delete a lab
 
-- **Stop All** — ACPI shutdown all VMs (preserves disk state)
-- **Delete Lab** — powers off and unregisters all VMs (cloned VMs are deleted; `.vbox` VMs like Kali are only unregistered, files stay)
-
-### Build a custom lab
-
-1. Click **Build Custom Lab** in the sidebar
-2. **Step 1** — add subnets (WAN, LAN, DMZ, etc.)
-3. **Step 2** — add VMs, assign each to a subnet; choose "firewall" role to bridge subnets
-4. **Step 3** — name the lab and click **Deploy**
+- **Stop All** — shuts down all VMs (preserves their disk)
+- **Delete Lab** — powers off and removes all VMs from VirtualBox
 
 ---
 
@@ -159,9 +191,9 @@ After a prebuilt lab finishes deploying, the **Ping All VMs** button activates. 
 | VM Image | Username | Password |
 |---|---|---|
 | `emyers_unbuntu_vsftpd` | `john` | `admin` |
-| `emyers-vulnhu-php` | `john` | `admin` |
+| `emyers-vulnhu-php` | `user` | `live` |
 | Kali Linux | `kali` | `kali` |
-| pfSense | `admin` | `pfsense` (web UI) |
+| pfSense (web UI) | `admin` | `pfsense` |
 
 ---
 
@@ -170,10 +202,12 @@ After a prebuilt lab finishes deploying, the **Ping All VMs** button activates. 
 | # | Name | Subnets | VMs | Purpose |
 |---|---|---|---|---|
 | 1 | Firewall Basics | WAN + LAN | vsftpd, PHP-CGI, pfSense | Learn how a firewall segments two subnets |
-| 2 | Flat Vulnerability Lab | LAN | vsftpd, PHP-CGI | Scanning/exploitation without a firewall |
+| 2 | Flat Vulnerability Lab | LAN only | vsftpd, PHP-CGI | Scanning/exploitation without a firewall |
 | 3 | Segmented Attack/Defense | WAN + LAN | Kali, vsftpd, pfSense | Attacker on WAN vs. defender behind pfSense |
 | 4 | Multi-Zone Network | WAN + LAN + DMZ | vsftpd, PHP-CGI, FW1, FW2 | Two firewalls, three isolated zones |
 | 5 | Enterprise Network | WAN + LAN + DMZ | Kali, vsftpd, PHP-CGI, pfSense | One firewall managing three zones |
+
+**Recommended starting point:** Scenario 2 — no firewall, just two VMs, simplest to verify.
 
 ---
 
@@ -182,13 +216,13 @@ After a prebuilt lab finishes deploying, the **Ping All VMs** button activates. 
 ```
 virtual_simulations_web/
 ├── app.py                  # Flask server — all API routes, SSH sessions, state
-├── web_config.py           # IMAGES_DIR and port settings
+├── web_config.py           # IMAGES_DIR and port settings  ← edit this first
 ├── deployer.py             # Orchestrates VM import → NIC wiring → start
 ├── prebuilt.py             # Scenario definitions (subnets, VMs, firewalls)
 ├── vm_manager.py           # VBoxManage wrappers (create, clone, start, delete)
 ├── network_manager.py      # Host-only adapter management + DHCP
 ├── firewall_manager.py     # pfSense NIC assignment
-├── adapter_manager.py      # Low-level VirtualBox adapter helpers
+├── adapter_manager.py      # Low-level VirtualBox adapter + DHCP helpers
 ├── validator.py            # Config validation before deploy
 ├── models.py               # LabConfig, Subnet, VMConfig, FirewallConfig dataclasses
 ├── logger.py               # Shared logger
@@ -196,7 +230,7 @@ virtual_simulations_web/
 ├── templates/
 │   └── index.html          # Single-page UI
 └── static/
-    ├── app.js              # All frontend JS (polling, SSH terminal, wizard)
+    ├── app.js              # Frontend JS (polling, SSH terminal, wizard)
     └── style.css           # UI styles
 ```
 
@@ -204,34 +238,36 @@ virtual_simulations_web/
 
 ## Troubleshooting
 
-**VMs fail to import — disk full**
-- Each OVA/clone needs 5–20 GB. Check `VBoxManage list hdds` for orphaned disks.
-- Delete stale VMs: `VBoxManage unregistervm <name> --delete`
+**`pip` command not found**
+- Make sure Python was installed with "Add to PATH" checked
+- Try `python -m pip install flask flask-sock paramiko websockify` instead
 
-**VM gets no IP / SSH can't connect**
-- The app discovers IPs via ARP cache first, then reads VirtualBox DHCP lease files in `~/.VirtualBox/*.leases`.
-- Wait 30–60 seconds after the VM shows "running" for DHCP to complete.
+**`VBoxManage` not found**
+- VirtualBox is not on your PATH. Use the full path:
+  `& "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" --version`
 
-**Cross-subnet ping fails through pfSense**
-- pfSense blocks WAN→LAN by default. This is intentional in Scenario 1 (Firewall Basics) — it demonstrates firewall segmentation.
-- To allow traffic, access the pfSense web UI at `https://<pfsense-lan-ip>` and add a WAN pass rule.
+**VM fails to import — "already exists" error**
+- A previous deployment left stale VMs. Delete them in the app with **Delete Lab**, or manually:
+  ```powershell
+  & "C:\Program Files\Oracle\VirtualBox\VBoxManage.exe" unregistervm "Target_vsftpd" --delete
+  ```
+
+**VM shows "running" but SSH gives "timed out"**
+- Wait 30–60 seconds for the VM to fully boot and get a network address
+- Click the **Ping All VMs** button to confirm connectivity
+- If it persists, click the VM name, clear the IP field, and type the IP shown in the VM's console window
 
 **SSH "Authentication failed" for PHP-CGI VM**
-- The `emyers-vulnhu-php` machine is a deliberately vulnerable target. If SSH credentials are unknown, the ping test will skip it and log the failure.
+- Use `user` / `live` (not `john` / `admin`) — see credentials table above
+
+**Cross-subnet ping fails through pfSense**
+- pfSense blocks WAN→LAN by default — this demonstrates firewall segmentation
+- To allow traffic: access the pfSense web UI at `https://<pfsense-lan-ip>` and add a WAN pass rule
 
 **Kali desktop shows blank / noVNC error**
-- VNC must be running inside Kali before clicking "Open Desktop".
-- Inside Kali: `tightvncserver :1 -geometry 1280x800 -depth 24`
-- Default VNC password: `kali`
+- `websockify` must be installed: `pip install websockify`
+- VNC must be running inside Kali. Click the VM name in the UI — the app starts it automatically via SSH
 
-**`flask-sock` not found**
-- `pip install flask-sock` — required for the SSH WebSocket proxy.
-
----
-
-## Architecture Notes
-
-- All VM state lives in `_state` (in-memory) — restarting the server loses awareness of running VMs. Running VMs continue in VirtualBox; just redeploy to reconnect.
-- SSH sessions use paramiko PTY channels, buffered server-side, polled by the frontend every 100 ms.
-- IP discovery: ARP cache → VirtualBox DHCP lease XML → ping-sweep + ARP.
-- The app writes no files during operation except `lab_orchestrator.log`.
+**Server loses track of running VMs after restart**
+- In-memory state is lost on restart. Running VMs continue in VirtualBox unaffected.
+- Just click **Deploy** again on the same scenario — the app reconnects to the existing VMs.
