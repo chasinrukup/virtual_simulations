@@ -291,9 +291,10 @@ function renderTopology(data) {
         const col      = stateColor(vm.state);
         const canClick = vm.state === "running";
         const isKali   = vm.is_kali;
+        // Kali card: clicking opens Desktop, secondary SSH is in the table
         const action   = isKali ? `openDesktop('${vm.name}')` : `openSshDialog('${vm.name}')`;
         const badge    = isKali ? '<span class="topo-vm-ssh">VNC</span>' : '<span class="topo-vm-ssh">SSH</span>';
-        const tip      = isKali ? " (click for desktop)" : " (click to SSH)";
+        const tip      = isKali ? " (click for desktop — SSH also in table below)" : " (click to SSH)";
         return `<div class="topo-vm-card${canClick ? " topo-vm-clickable" : ""}"
                      ${canClick ? `onclick="${action}"` : ""}
                      title="${vm.name} — ${vm.state}${canClick ? tip : ""}">
@@ -362,9 +363,10 @@ function renderVmTable(data) {
     if (isRunning) {
       if (vm.is_kali) {
         actHtml += `<button class="btn btn-primary ssh-term-btn" onclick="openDesktop('${vm.name}')">&#128187; Desktop</button>`;
+        actHtml += `<button class="btn btn-ghost ssh-term-btn"  onclick="openSshDialog('${vm.name}')" title="Open SSH terminal in Kali">&#11042; SSH</button>`;
       } else if (vm.is_pfsense) {
         actHtml += `<button class="btn btn-accent ssh-term-btn" onclick="openFirewallWebUI('${vm.name}')">&#127760; Web UI</button>`;
-        actHtml += `<button class="btn btn-primary ssh-term-btn" onclick="openSshDialog('${vm.name}')">&#11042; SSH</button>`;
+        actHtml += `<button class="btn btn-ghost ssh-term-btn"  onclick="openSshDialog('${vm.name}')" title="SSH into pfSense shell">&#11042; SSH</button>`;
       } else {
         actHtml += `<button class="btn btn-primary ssh-term-btn" onclick="openSshDialog('${vm.name}')">&#11042; Terminal</button>`;
       }
@@ -492,7 +494,13 @@ async function openSshDialog(vmName) {
       document.getElementById("sshIpHint").style.color = "var(--yellow)";
     }
     if (data.ssh_note) {
-      document.getElementById("sshIpHint").textContent += `\n⚠ ${data.ssh_note}`;
+      document.getElementById("sshIpHint").textContent += `  ⚠ ${data.ssh_note}`;
+    }
+    // Kali-specific warning: SSH is disabled by default
+    if (data.ssh_user === "kali") {
+      document.getElementById("sshIpHint").textContent +=
+        "\n⚠ Kali SSH is disabled by default. In the Kali VM window run: sudo systemctl enable --now ssh";
+      document.getElementById("sshIpHint").style.color = "var(--yellow)";
     }
   } catch (e) {
     document.getElementById("sshIpHint").textContent = "Could not look up IP — enter manually.";
@@ -632,10 +640,20 @@ async function openDesktop(vmName) {
   try {
     const res = await fetch(`/api/vm-desktop/${encodeURIComponent(vmName)}`);
     data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Server error");
+    if (!res.ok) {
+      const msg = data.error || "Server error";
+      document.getElementById("desktopStatus").textContent = "Failed — see details below";
+      document.getElementById("desktopStatus").style.color = "var(--red)";
+      // Show the full error (multiline) inside the canvas area so it's readable
+      document.getElementById("desktopCanvas").innerHTML =
+        `<pre style="color:#f87171;padding:20px;font-size:12px;white-space:pre-wrap;font-family:monospace">${msg}</pre>`;
+      return;
+    }
   } catch (e) {
-    document.getElementById("desktopStatus").textContent = String(e);
+    document.getElementById("desktopStatus").textContent = "Connection error";
     document.getElementById("desktopStatus").style.color = "var(--red)";
+    document.getElementById("desktopCanvas").innerHTML =
+      `<pre style="color:#f87171;padding:20px;font-size:12px">${e}</pre>`;
     return;
   }
 

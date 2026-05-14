@@ -987,8 +987,18 @@ def api_vm_desktop(vm_name):
                 "Try clicking Desktop again — it may need a moment."}), 503
 
     except paramiko.AuthenticationException:
-        return jsonify({"error": "SSH authentication failed (user: kali / pass: kali)."}), 401
+        return jsonify({"error": "SSH auth failed — try user: kali / pass: kali"}), 401
     except Exception as e:
+        s = str(e).lower()
+        if "connection refused" in s or "unable to connect" in s or "no valid" in s or "timed out" in s:
+            return jsonify({"error":
+                "SSH is not running in this Kali VM.\n\n"
+                "To enable it:\n"
+                "1. Open the Kali VM window in VirtualBox\n"
+                "2. Log in as  kali / kali\n"
+                "3. Open a terminal and run:\n"
+                "     sudo systemctl enable --now ssh\n"
+                "4. Click Desktop (or SSH) again here."}), 503
         return jsonify({"error": f"Cannot SSH into VM: {e}"}), 503
 
     # Launch websockify on the host — bridges WebSocket to VNC TCP
